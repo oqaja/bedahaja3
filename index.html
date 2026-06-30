@@ -67,7 +67,7 @@
   fieldset{border:1px solid var(--line); border-radius:var(--radius); padding:16px; background:var(--card);}
   legend{padding:0 8px; font-weight:700; color:var(--accent); font-size:15px;}
   label{display:block; font-size:13px; color:var(--muted); margin-bottom:4px;}
-  input[type=text], input[type=number], select, textarea{
+  input[type=text], input[type=number], input[type=password], select, textarea{
     width:100%; padding:9px 10px; background:var(--bg); border:1px solid var(--line);
     border-radius:8px; color:var(--text); font-size:14px;
   }
@@ -95,6 +95,27 @@
     border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:12px;
     background:rgba(255,255,255,0.02);
   }
+
+  .login-modal{
+    position:fixed; inset:0; background:rgba(0,0,0,.72);
+    display:flex; align-items:center; justify-content:center; z-index:9999;
+    padding:20px;
+  }
+  .login-modal.hidden{display:none;}
+  .login-box{
+    width:min(92vw, 420px); background:var(--card); border:1px solid var(--line);
+    border-radius:var(--radius); padding:18px; box-shadow:0 16px 50px rgba(0,0,0,.45);
+  }
+  .login-box h2{margin:0 0 8px; color:var(--accent);}
+  .login-box p{margin:0 0 16px; color:var(--muted); font-size:13px;}
+  .login-box .actions{margin-top:14px;}
+  .login-top{
+    display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;
+  }
+  .close-x{
+    background:transparent; border:none; color:var(--muted); font-size:20px; cursor:pointer;
+    width:32px; height:32px; line-height:32px;
+  }
 </style>
 </head>
 <body>
@@ -103,14 +124,14 @@
   <h1>Shoe<span>Police</span> // Teardown DB</h1>
   <nav>
     <button class="secondary" onclick="go('list')">📋 List</button>
-    <button onclick="go('form')">➕ Tambah Sepatu</button>
+    <button id="addBtn" onclick="go('form')">➕ Tambah Sepatu</button>
     <button class="secondary" onclick="exportData()">⬇️ Export JSON</button>
-    <label class="btn secondary" style="margin:0;">
+    <label id="importWrap" class="btn secondary" style="margin:0;">
       ⬆️ Import JSON
       <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
     </label>
     <button class="secondary" onclick="go('settings')">⚙️</button>
-    <button class="secondary" onclick="toggleRole()">👤 <span id="roleText">Mode</span></button>
+    <button class="secondary" onclick="openRoleAction()">👤 <span id="roleText">Mode</span></button>
   </nav>
 </header>
 
@@ -118,22 +139,50 @@
 
 <footer>Shoe Police Teardown DB — data tersimpan lokal di browser ini.</footer>
 
+<div id="loginModal" class="login-modal hidden" aria-hidden="true">
+  <div class="login-box" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+    <div class="login-top">
+      <h2 id="loginTitle">Login Admin</h2>
+      <button class="close-x" onclick="closeLoginModal()" aria-label="Close">&times;</button>
+    </div>
+    <p>Masukkan password admin untuk mengaktifkan mode admin.</p>
+    <form onsubmit="return submitAdminLogin(event)">
+      <div class="field">
+        <label for="adminPassword">Password</label>
+        <input type="password" id="adminPassword" placeholder="Masukkan password admin" autocomplete="current-password" required>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn secondary" onclick="closeLoginModal()">Batal</button>
+        <button type="submit" class="btn">Masuk</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCKQ6Sai2qbn77CS5JtRVnr9-C6OMq_dUAZI-OnIJgqwOoKERRPovaqjwaItbWab7X/exec';
 const SCRIPT_URL_KEY = 'sp_script_url';
 const ROLE_KEY = 'sp_role';
+const ADMIN_PASSWORD = 'admin123';
+
 let cachedData = null;
 let selectedIds = new Set();
 
 function getScriptUrl(){ return localStorage.getItem(SCRIPT_URL_KEY) || DEFAULT_SCRIPT_URL; }
 function setScriptUrl(url){ localStorage.setItem(SCRIPT_URL_KEY, url.trim()); }
 function getRole(){ return localStorage.getItem(ROLE_KEY) || 'viewer'; }
-function setRole(role){ localStorage.setItem(ROLE_KEY, role); updateRoleLabel(); }
+function setRole(role){ localStorage.setItem(ROLE_KEY, role); updateRoleUI(); }
 function isAdmin(){ return getRole() === 'admin'; }
-function updateRoleLabel(){
+
+function updateRoleUI(){
   const el = document.getElementById('roleText');
   if(el) el.textContent = isAdmin() ? 'Admin' : 'Penonton';
+  const addBtn = document.getElementById('addBtn');
+  const importWrap = document.getElementById('importWrap');
+  if(addBtn) addBtn.style.display = isAdmin() ? '' : 'none';
+  if(importWrap) importWrap.style.display = isAdmin() ? '' : 'none';
 }
+
 function uid(){ return 'sh_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
 
 async function apiGet(){
@@ -213,46 +262,48 @@ function saveSettings(){
   go('list');
 }
 
-function renderLoginCard(){
-  const role = getRole();
-  return `
-    <div class="empty">
-      <h2>Mode ${role === 'admin' ? 'Admin' : 'Penonton'}</h2>
-      <p>${role === 'admin' ? 'Kamu bisa tambah, edit, dan hapus data.' : 'Kamu hanya bisa lihat data dan compare.'}</p>
-      <div class="actions" style="justify-content:center;">
-        ${role === 'admin'
-          ? `<button class="btn secondary" onclick="logoutRole()">Keluar Admin</button>`
-          : `<button class="btn" onclick="loginAsAdmin()">Masuk Admin</button>`}
-      </div>
-    </div>
-  `;
+function openRoleAction(){
+  if(isAdmin()) logoutRole();
+  else openLoginModal();
 }
 
-function loginAsAdmin(){
-  const pass = prompt('Masukkan password admin:');
-  if(pass === 'admin123'){
+function openLoginModal(){
+  const modal = document.getElementById('loginModal');
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+  setTimeout(() => document.getElementById('adminPassword').focus(), 50);
+}
+
+function closeLoginModal(){
+  const modal = document.getElementById('loginModal');
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+  document.getElementById('adminPassword').value = '';
+}
+
+function submitAdminLogin(e){
+  e.preventDefault();
+  const pass = document.getElementById('adminPassword').value;
+  if(pass === ADMIN_PASSWORD){
     setRole('admin');
-    alert('Masuk sebagai admin.');
+    closeLoginModal();
     route('list');
-  } else if(pass !== null){
+    alert('Login admin berhasil.');
+  } else {
     alert('Password salah.');
   }
+  return false;
 }
 
 function logoutRole(){
   setRole('viewer');
-  alert('Mode penonton aktif.');
   route('list');
-}
-
-function toggleRole(){
-  if(isAdmin()) logoutRole();
-  else loginAsAdmin();
+  alert('Mode penonton aktif.');
 }
 
 async function handleHash(){
   const hash = location.hash.slice(1);
-  updateRoleLabel();
+  updateRoleUI();
 
   if(hash.startsWith('detail/')) return route('detail', hash.split('/')[1]);
   if(hash.startsWith('edit/')) return route('form', hash.split('/')[1]);
@@ -273,20 +324,28 @@ function go(view, id){
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  updateRoleLabel();
+  updateRoleUI();
   handleHash();
+
+  document.getElementById('loginModal').addEventListener('click', (e) => {
+    if(e.target.id === 'loginModal') closeLoginModal();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape') closeLoginModal();
+  });
 });
 
 async function route(view, id){
   const app = document.getElementById('app');
-  updateRoleLabel();
+  updateRoleUI();
 
   if(view === 'form' && !isAdmin()){
     app.innerHTML = `<div class="empty">
       <h2>Mode penonton</h2>
       <p>Hanya admin yang boleh menambah atau mengubah data bedah sepatu.</p>
       <div class="actions" style="justify-content:center;">
-        <button class="btn" onclick="loginAsAdmin()">Masuk Admin</button>
+        <button class="btn" onclick="openLoginModal()">Masuk Admin</button>
         <button class="btn secondary" onclick="go('list')">Balik ke List</button>
       </div>
     </div>`;
@@ -643,6 +702,20 @@ async function importData(e){
   reader.readAsText(file);
   e.target.value = '';
 }
+
+async function deleteItem(id){
+  if(!isAdmin()) return alert('Akses ditolak.');
+  if(!confirm('Yakin hapus data sepatu ini?')) return;
+  try{
+    await apiPost({ action: 'delete', id: id, role: getRole() });
+    cachedData = null;
+    go('list');
+  } catch(err){
+    alert('Gagal hapus: ' + err.message);
+  }
+}
+
+document.getElementById('loginModal').addEventListener('submit', submitAdminLogin);
 </script>
 </body>
 </html>

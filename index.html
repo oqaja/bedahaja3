@@ -1,721 +1,774 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shoe Police Teardown DB</title>
-<style>
-  :root{
-    --bg:#0f0f10; --bg2:#181819; --card:#1e1e20; --line:#2c2c2f;
-    --text:#f2f2f0; --muted:#9a9a9e; --accent:#ffb800; --accent2:#ff5a36;
-    --good:#7ed957; --fair:#e0c419; --excel:#3ddc84;
-    --radius:10px;
-  }
-  *{box-sizing:border-box;}
-  body{
-    margin:0; font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
-    background:var(--bg); color:var(--text); min-height:100vh;
-  }
-  header{
-    padding:18px 20px; background:var(--bg2); border-bottom:1px solid var(--line);
-    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;
-    position:sticky; top:0; z-index:10;
-  }
-  header h1{font-size:18px; margin:0; letter-spacing:0.5px;}
-  header h1 span{color:var(--accent);}
-  nav{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
-  nav button, .btn{
-    background:var(--accent); color:#111; border:none; padding:9px 16px;
-    border-radius:var(--radius); font-weight:600; cursor:pointer; font-size:14px;
-  }
-  nav button.secondary, .btn.secondary{background:transparent; color:var(--text); border:1px solid var(--line);}
-  nav button.danger, .btn.danger{background:var(--accent2); color:#fff;}
-  main{padding:20px; max-width:1100px; margin:0 auto;}
-  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px;}
-  .card{
-    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
-    padding:14px; cursor:pointer; transition:.15s; position:relative;
-  }
-  .card:hover{border-color:var(--accent);}
-  .card h3{margin:0 0 4px; font-size:16px;}
-  .card p{margin:2px 0; font-size:13px; color:var(--muted);}
-  .tag{
-    display:inline-block; background:var(--bg2); border:1px solid var(--line);
-    padding:2px 8px; border-radius:20px; font-size:11px; color:var(--accent); margin-top:6px;
-  }
-  .empty{color:var(--muted); text-align:center; padding:60px 20px;}
-  .card .ck{
-    position:absolute; top:10px; right:10px; width:20px; height:20px; z-index:2; cursor:pointer;
-  }
-  .compare-bar{
-    position:fixed; bottom:0; left:0; right:0; background:var(--bg2); border-top:1px solid var(--accent);
-    padding:12px 20px; display:flex; align-items:center; justify-content:center; gap:14px; z-index:20;
-  }
-  table.compare-table{width:100%; border-collapse:collapse; font-size:13px;}
-  table.compare-table th, table.compare-table td{
-    border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top;
-  }
-  table.compare-table th{background:var(--bg2); color:var(--accent); position:sticky; top:60px;}
-  table.compare-table td.label-col, table.compare-table th.label-col{
-    background:var(--card); color:var(--muted); font-weight:600; white-space:nowrap; position:sticky; left:0;
-  }
-  table.compare-table tr.section-row td{
-    background:var(--bg2); color:var(--accent); font-weight:700; font-size:12px; letter-spacing:0.5px; text-transform:uppercase;
-  }
-  .table-scroll{overflow-x:auto; padding-bottom:80px;}
-  form{display:flex; flex-direction:column; gap:14px;}
-  fieldset{border:1px solid var(--line); border-radius:var(--radius); padding:16px; background:var(--card);}
-  legend{padding:0 8px; font-weight:700; color:var(--accent); font-size:15px;}
-  label{display:block; font-size:13px; color:var(--muted); margin-bottom:4px;}
-  input[type=text], input[type=number], input[type=password], select, textarea{
-    width:100%; padding:9px 10px; background:var(--bg); border:1px solid var(--line);
-    border-radius:8px; color:var(--text); font-size:14px;
-  }
-  textarea{resize:vertical; min-height:50px;}
-  .field{margin-bottom:10px;}
-  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
-  .abrasion-block{
-    border:1px dashed var(--line); border-radius:8px; padding:10px; margin-bottom:10px; background:var(--bg2);
-  }
-  .abrasion-block .row2{grid-template-columns:1fr 2fr;}
-  .actions{display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;}
-  .detail-section{margin-bottom:18px;}
-  .detail-section h2{font-size:15px; color:var(--accent); border-bottom:1px solid var(--line); padding-bottom:6px;}
-  .kv{display:grid; grid-template-columns:200px 1fr; gap:6px 14px; font-size:14px;}
-  .kv div.k{color:var(--muted);}
-  .badge-rating{font-weight:700;}
-  .badge-Poor{color:var(--accent2);}
-  .badge-Fair{color:var(--fair);}
-  .badge-Good{color:var(--good);}
-  .badge-Excelent{color:var(--excel);}
-  footer{text-align:center; padding:30px 10px; color:var(--muted); font-size:12px;}
-  .hidden{display:none;}
-  .pill{
-    display:inline-flex; align-items:center; gap:6px; padding:6px 10px;
-    border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:12px;
-    background:rgba(255,255,255,0.02);
-  }
-
-  .login-modal{
-    position:fixed; inset:0; background:rgba(0,0,0,.72);
-    display:flex; align-items:center; justify-content:center; z-index:9999;
-    padding:20px;
-  }
-  .login-modal.hidden{display:none;}
-  .login-box{
-    width:min(92vw, 420px); background:var(--card); border:1px solid var(--line);
-    border-radius:var(--radius); padding:18px; box-shadow:0 16px 50px rgba(0,0,0,.45);
-  }
-  .login-box h2{margin:0 0 8px; color:var(--accent);}
-  .login-box p{margin:0 0 16px; color:var(--muted); font-size:13px;}
-  .login-box .actions{margin-top:14px;}
-  .login-top{
-    display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;
-  }
-  .close-x{
-    background:transparent; border:none; color:var(--muted); font-size:20px; cursor:pointer;
-    width:32px; height:32px; line-height:32px;
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Shoe Police · Teardown DB</title>
+  <style>
+    :root {
+      --bg: #0f0f10;
+      --bg2: #181819;
+      --card: #1e1e20;
+      --line: #2c2c2f;
+      --text: #f2f2f0;
+      --muted: #9a9a9e;
+      --accent: #ffb800;
+      --accent2: #ff5a36;
+      --radius: 12px;
+      --sidebar-w: 260px;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    /* ===== HEADER ===== */
+    header {
+      padding: 16px 24px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(8px);
+    }
+    header h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    header h1 span {
+      color: var(--accent);
+      font-weight: 800;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    /* ===== BUTTONS & INPUTS ===== */
+    button,
+    .btn {
+      background: var(--accent);
+      color: #0f0f10;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 30px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    button.secondary,
+    .btn.secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--line);
+    }
+    button.danger,
+    .btn.danger {
+      background: var(--accent2);
+      color: white;
+      border: none;
+    }
+    button:active {
+      transform: scale(0.96);
+    }
+    button:disabled {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    .mode-badge {
+      background: var(--card);
+      border: 1px solid var(--line);
+      padding: 6px 14px;
+      border-radius: 40px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .admin-mode .mode-badge {
+      background: rgba(255, 184, 0, 0.12);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    /* ===== MAIN LAYOUT ===== */
+    main {
+      flex: 1;
+      padding: 24px;
+      max-width: 1300px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 18px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      cursor: pointer;
+      transition: 0.2s;
+      position: relative;
+    }
+    .card:hover {
+      border-color: var(--accent);
+      background: #252528;
+    }
+    .card h3 {
+      margin: 0 0 6px;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+    .card p {
+      margin: 4px 0;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .tag {
+      display: inline-block;
+      background: var(--bg2);
+      border: 1px solid var(--line);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-top: 10px;
+      text-transform: uppercase;
+    }
+    .compare-bar {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg2);
+      border: 1px solid var(--accent);
+      padding: 12px 24px;
+      border-radius: 50px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      z-index: 30;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    /* ===== COMPARE TABLE ===== */
+    .table-scroll {
+      overflow-x: auto;
+      margin-top: 20px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+    }
+    table.compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      min-width: 600px;
+    }
+    table.compare-table th,
+    table.compare-table td {
+      border: 1px solid var(--line);
+      padding: 12px 14px;
+      text-align: left;
+      vertical-align: top;
+    }
+    table.compare-table th {
+      background: var(--bg2);
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .label-col {
+      background: var(--card);
+      color: var(--muted);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .section-row td {
+      background: var(--bg2);
+      color: var(--accent);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    /* ===== FORMS ===== */
+    fieldset {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 20px;
+      background: var(--card);
+      margin-bottom: 20px;
+    }
+    legend {
+      font-weight: 700;
+      color: var(--accent);
+      padding: 0 10px;
+      font-size: 1rem;
+    }
+    label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 0.9rem;
+      outline: none;
+      transition: 0.2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+    .row2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .field {
+      margin-bottom: 14px;
+    }
+    .abrasion-block {
+      background: var(--bg2);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .badge-rating {
+      font-weight: 700;
+    }
+    .badge-Poor { color: var(--accent2); }
+    .badge-Fair { color: #e0c419; }
+    .badge-Good { color: #7ed957; }
+    .badge-Excelent { color: #3ddc84; }
+    .kv {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 8px 16px;
+      font-size: 0.9rem;
+    }
+    .kv .k { color: var(--muted); }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: var(--muted);
+      font-size: 0.8rem;
+      border-top: 1px solid var(--line);
+    }
+    /* admin toggle */
+    .login-panel {
+      background: var(--card);
+      padding: 18px;
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .hidden {
+      display: none !important;
+    }
+  </style>
 </head>
-<body>
-
+<body class="viewer-mode">
 <header>
-  <h1>Shoe<span>Police</span> // Teardown DB</h1>
-  <nav>
-    <button class="secondary" onclick="go('list')">📋 List</button>
-    <button id="addBtn" onclick="go('form')">➕ Tambah Sepatu</button>
-    <button class="secondary" onclick="exportData()">⬇️ Export JSON</button>
-    <label id="importWrap" class="btn secondary" style="margin:0;">
-      ⬆️ Import JSON
-      <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
-    </label>
-    <button class="secondary" onclick="go('settings')">⚙️</button>
-    <button class="secondary" onclick="openRoleAction()">👤 <span id="roleText">Mode</span></button>
-  </nav>
+  <h1>👟 Shoe<span>Police</span> · DB</h1>
+  <div class="header-actions">
+    <span class="mode-badge" id="modeIndicator">👁️ Mode Viewer</span>
+    <button class="secondary" onclick="go('list')">📋 Semua Sepatu</button>
+    <button id="adminToggleBtn" class="secondary" onclick="toggleAdminMode()">🔐 Masuk Admin</button>
+    <button id="logoutAdminBtn" class="secondary hidden" onclick="logoutAdmin()">🚪 Keluar Admin</button>
+  </div>
 </header>
 
 <main id="app"></main>
 
-<footer>Shoe Police Teardown DB — data tersimpan lokal di browser ini.</footer>
+<!-- Compare bar (muncul saat ada selection) -->
+<div id="compareBarContainer"></div>
 
-<div id="loginModal" class="login-modal hidden" aria-hidden="true">
-  <div class="login-box" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
-    <div class="login-top">
-      <h2 id="loginTitle">Login Admin</h2>
-      <button class="close-x" onclick="closeLoginModal()" aria-label="Close">&times;</button>
-    </div>
-    <p>Masukkan password admin untuk mengaktifkan mode admin.</p>
-    <form onsubmit="return submitAdminLogin(event)">
-      <div class="field">
-        <label for="adminPassword">Password</label>
-        <input type="password" id="adminPassword" placeholder="Masukkan password admin" autocomplete="current-password" required>
-      </div>
-      <div class="actions">
-        <button type="button" class="btn secondary" onclick="closeLoginModal()">Batal</button>
-        <button type="submit" class="btn">Masuk</button>
-      </div>
-    </form>
-  </div>
-</div>
+<footer>
+  Shoe Police Teardown DB · Data tersimpan di Google Sheets · <span id="footerModeText">Mode Viewer (read‑only)</span>
+</footer>
 
 <script>
-const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCKQ6Sai2qbn77CS5JtRVnr9-C6OMq_dUAZI-OnIJgqwOoKERRPovaqjwaItbWab7X/exec';
-const SCRIPT_URL_KEY = 'sp_script_url';
-const ROLE_KEY = 'sp_role';
-const ADMIN_PASSWORD = 'admin123';
+  (function() {
+    // ---------- CONSTANTS ----------
+    const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCKQ6Sai2qbn77CS5JtRVnr9-C6OMq_dUAZI-OnIJgqwOoKERRPovaqjwaItbWab7X/exec';
+    const SCRIPT_URL_KEY = 'sp_script_url';
+    const ADMIN_KEY = 'sp_admin_mode';
+    // Password admin sederhana (ganti sesuai keinginan)
+    const ADMIN_PASSWORD = 'shoepolice2024';
 
-let cachedData = null;
-let selectedIds = new Set();
+    let cachedData = null;
+    let selectedIds = new Set();
 
-function getScriptUrl(){ return localStorage.getItem(SCRIPT_URL_KEY) || DEFAULT_SCRIPT_URL; }
-function setScriptUrl(url){ localStorage.setItem(SCRIPT_URL_KEY, url.trim()); }
-function getRole(){ return localStorage.getItem(ROLE_KEY) || 'viewer'; }
-function setRole(role){ localStorage.setItem(ROLE_KEY, role); updateRoleUI(); }
-function isAdmin(){ return getRole() === 'admin'; }
+    // ---------- HELPERS ----------
+    const getScriptUrl = () => localStorage.getItem(SCRIPT_URL_KEY) || DEFAULT_SCRIPT_URL;
+    const setScriptUrl = (url) => localStorage.setItem(SCRIPT_URL_KEY, url.trim());
+    const isAdmin = () => localStorage.getItem(ADMIN_KEY) === 'true';
 
-function updateRoleUI(){
-  const el = document.getElementById('roleText');
-  if(el) el.textContent = isAdmin() ? 'Admin' : 'Penonton';
-  const addBtn = document.getElementById('addBtn');
-  const importWrap = document.getElementById('importWrap');
-  if(addBtn) addBtn.style.display = isAdmin() ? '' : 'none';
-  if(importWrap) importWrap.style.display = isAdmin() ? '' : 'none';
-}
+    function uid() {
+      return 'sh_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+    }
 
-function uid(){ return 'sh_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
+    function esc(str) {
+      if (str === undefined || str === null) return '';
+      return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function escAttr(str) { return esc(str); }
 
-async function apiGet(){
-  const url = getScriptUrl();
-  if(!url) throw new Error('NO_URL');
-  const res = await fetch(url, { method: 'GET' });
-  const json = await res.json();
-  if(json.status !== 'ok') throw new Error(json.message || 'API error');
-  return json.data;
-}
+    const RATING_OPTIONS = ['', 'Poor', 'Fair', 'Good', 'Excelent'];
+    const GUSSET_OPTIONS = ['', 'Non-Gusseted', 'Semi Gusseted', 'Gusseted'];
+    const PADDING_OPTIONS = ['', 'Padding', 'No Padding'];
 
-async function apiPost(payload){
-  const url = getScriptUrl();
-  if(!url) throw new Error('NO_URL');
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(payload)
-  });
-  const json = await res.json();
-  if(json.status !== 'ok') throw new Error(json.message || 'API error');
-  return json;
-}
+    function selectOptions(options, selected) {
+      return options.map(o => `<option value="${o}" ${o === selected ? 'selected' : ''}>${o || '— pilih —'}</option>`).join('');
+    }
 
-async function getData(forceRefresh){
-  if(cachedData && !forceRefresh) return cachedData;
-  cachedData = await apiGet();
-  return cachedData;
-}
+    // ---------- API ----------
+    async function apiGet() {
+      const url = getScriptUrl();
+      if (!url) throw new Error('Script URL belum diatur.');
+      const res = await fetch(url, { method: 'GET' });
+      const json = await res.json();
+      if (json.status !== 'ok') throw new Error(json.message || 'Gagal ambil data');
+      return json.data;
+    }
 
-const RATING_OPTIONS = ['', 'Poor', 'Fair', 'Good', 'Excelent'];
-const GUSSET_OPTIONS = ['', 'Non-Gusseted', 'Semi Gusseted', 'Gusseted'];
-const PADDING_OPTIONS = ['', 'Padding', 'No Padding'];
+    async function apiPost(payload) {
+      const url = getScriptUrl();
+      if (!url) throw new Error('Script URL belum diatur.');
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      if (json.status !== 'ok') throw new Error(json.message || 'Gagal simpan');
+      return json;
+    }
 
-function selectOptions(options, selected){
-  return options.map(o => `<option value="${o}" ${o===selected?'selected':''}>${o || '— pilih —'}</option>`).join('');
-}
+    async function getData(forceRefresh = false) {
+      if (cachedData && !forceRefresh) return cachedData;
+      cachedData = await apiGet();
+      return cachedData;
+    }
 
-function esc(str){
-  if(str === undefined || str === null) return '';
-  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-function escAttr(str){ return esc(str); }
+    // ---------- UI UPDATE (admin dependent) ----------
+    function updateUIForMode() {
+      const admin = isAdmin();
+      document.body.classList.toggle('admin-mode', admin);
+      document.getElementById('modeIndicator').innerHTML = admin ? '⚙️ Mode Admin' : '👁️ Mode Viewer';
+      document.getElementById('footerModeText').textContent = admin ? 'Mode Admin (bisa edit/hapus)' : 'Mode Viewer (read‑only)';
+      document.getElementById('adminToggleBtn').classList.toggle('hidden', admin);
+      document.getElementById('logoutAdminBtn').classList.toggle('hidden', !admin);
+      
+      // Refresh tampilan saat ini agar tombol admin/viewer sesuai
+      const hash = location.hash.slice(1);
+      if (hash.startsWith('detail/')) route('detail', hash.split('/')[1]);
+      else if (hash.startsWith('edit/')) route('form', hash.split('/')[1]);
+      else if (hash.startsWith('compare/')) route('compare', decodeURIComponent(hash.split('/')[1]));
+      else if (hash === 'form') route('form');
+      else if (hash === 'settings') route('settings');
+      else route('list');
+    }
 
-function renderSettingsPrompt(){
-  return `<div class="empty">
-    <h2>👋 Setup dulu</h2>
-    <p>Web ini butuh URL Apps Script biar bisa connect ke Google Sheets.</p>
-    <button class="btn" onclick="go('settings')">⚙️ Masukin Script URL</button>
-  </div>`;
-}
+    window.toggleAdminMode = function() {
+      if (isAdmin()) {
+        logoutAdmin();
+        return;
+      }
+      const password = prompt('Masukkan password admin:');
+      if (password === null) return;
+      if (password === ADMIN_PASSWORD) {
+        localStorage.setItem(ADMIN_KEY, 'true');
+        updateUIForMode();
+      } else {
+        alert('Password salah! Tetap dalam mode viewer.');
+      }
+    };
 
-function renderSettings(){
-  const url = getScriptUrl();
-  return `
-  <fieldset style="max-width:600px; margin:0 auto;">
-    <legend>⚙️ Settings</legend>
-    <div class="field">
-      <label>Google Apps Script Web App URL</label>
-      <input type="text" id="settingsUrl" value="${escAttr(url)}" placeholder="https://script.google.com/macros/s/xxxxx/exec">
-    </div>
-    <p style="color:var(--muted); font-size:13px;">
-      Dapetin URL ini dari Apps Script: Deploy > New deployment > Web app.
-    </p>
-    <div class="actions">
-      <button class="btn secondary" onclick="go('list')">Batal</button>
-      <button class="btn" onclick="saveSettings()">Simpan & Coba Konek</button>
-    </div>
-  </fieldset>`;
-}
+    window.logoutAdmin = function() {
+      localStorage.removeItem(ADMIN_KEY);
+      selectedIds.clear();
+      updateUIForMode();
+    };
 
-function saveSettings(){
-  const url = document.getElementById('settingsUrl').value.trim();
-  if(!url){ alert('URL nggak boleh kosong.'); return; }
-  setScriptUrl(url);
-  cachedData = null;
-  go('list');
-}
+    // ---------- ROUTER ----------
+    async function route(view, id) {
+      const app = document.getElementById('app');
+      const compareBar = document.getElementById('compareBarContainer');
+      compareBar.innerHTML = '';
 
-function openRoleAction(){
-  if(isAdmin()) logoutRole();
-  else openLoginModal();
-}
+      if (!getScriptUrl() && view !== 'settings') {
+        app.innerHTML = renderSettingsPrompt();
+        return;
+      }
 
-function openLoginModal(){
-  const modal = document.getElementById('loginModal');
-  modal.classList.remove('hidden');
-  modal.setAttribute('aria-hidden', 'false');
-  setTimeout(() => document.getElementById('adminPassword').focus(), 50);
-}
-
-function closeLoginModal(){
-  const modal = document.getElementById('loginModal');
-  modal.classList.add('hidden');
-  modal.setAttribute('aria-hidden', 'true');
-  document.getElementById('adminPassword').value = '';
-}
-
-function submitAdminLogin(e){
-  e.preventDefault();
-  const pass = document.getElementById('adminPassword').value;
-  if(pass === ADMIN_PASSWORD){
-    setRole('admin');
-    closeLoginModal();
-    route('list');
-    alert('Login admin berhasil.');
-  } else {
-    alert('Password salah.');
-  }
-  return false;
-}
-
-function logoutRole(){
-  setRole('viewer');
-  route('list');
-  alert('Mode penonton aktif.');
-}
-
-async function handleHash(){
-  const hash = location.hash.slice(1);
-  updateRoleUI();
-
-  if(hash.startsWith('detail/')) return route('detail', hash.split('/')[1]);
-  if(hash.startsWith('edit/')) return route('form', hash.split('/')[1]);
-  if(hash.startsWith('compare/')) return route('compare', decodeURIComponent(hash.split('/')[1]));
-  if(hash === 'form') return route('form');
-  if(hash === 'settings') return route('settings');
-  return route('list');
-}
-window.addEventListener('hashchange', handleHash);
-
-function go(view, id){
-  if(view==='detail') location.hash = 'detail/' + id;
-  else if(view==='form' && id) location.hash = 'edit/' + id;
-  else if(view==='form') location.hash = 'form';
-  else if(view==='compare') location.hash = 'compare/' + encodeURIComponent(id);
-  else if(view==='settings') location.hash = 'settings';
-  else location.hash = '';
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  updateRoleUI();
-  handleHash();
-
-  document.getElementById('loginModal').addEventListener('click', (e) => {
-    if(e.target.id === 'loginModal') closeLoginModal();
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if(e.key === 'Escape') closeLoginModal();
-  });
-});
-
-async function route(view, id){
-  const app = document.getElementById('app');
-  updateRoleUI();
-
-  if(view === 'form' && !isAdmin()){
-    app.innerHTML = `<div class="empty">
-      <h2>Mode penonton</h2>
-      <p>Hanya admin yang boleh menambah atau mengubah data bedah sepatu.</p>
-      <div class="actions" style="justify-content:center;">
-        <button class="btn" onclick="openLoginModal()">Masuk Admin</button>
-        <button class="btn secondary" onclick="go('list')">Balik ke List</button>
-      </div>
-    </div>`;
-    return;
-  }
-
-  app.innerHTML = '<div class="empty">⏳ Memuat data...</div>';
-  try{
-    if(view === 'list') app.innerHTML = renderList(await getData());
-    else if(view === 'form') app.innerHTML = renderForm(id, id ? (await getData()).find(d=>d.id===id) : null);
-    else if(view === 'detail') app.innerHTML = renderDetail((await getData()).find(d=>d.id===id));
-    else if(view === 'compare'){
-      const ids = id.split(',');
-      const all = await getData();
-      const items = ids.map(i => all.find(d=>d.id===i)).filter(Boolean);
-      app.innerHTML = renderCompare(items);
-    } else if(view === 'settings') app.innerHTML = renderSettings();
-  } catch(err){
-    app.innerHTML = `<div class="empty">
-      <h2>⚠️ Gagal konek ke Google Sheets</h2>
-      <p>${esc(err.message)}</p>
-      <p>Cek lagi Script URL-nya di Settings.</p>
-      <button class="btn" onclick="go('settings')">⚙️ Buka Settings</button>
-    </div>`;
-  }
-}
-
-function renderList(data){
-  if(data.length === 0){
-    return `<div class="empty">
-      <h2>Belum ada sepatu yang dibedah 👟</h2>
-      <p>Klik "Tambah Sepatu" buat mulai isi data teardown pertama.</p>
-    </div>`;
-  }
-
-  const cards = data.map(d => `
-    <div class="card" onclick="go('detail','${d.id}')">
-      <input type="checkbox" class="ck" data-id="${d.id}"
-        ${selectedIds.has(d.id) ? 'checked' : ''}
-        onclick="event.stopPropagation(); toggleSelect('${d.id}')">
-      <h3>${esc(d.identify.brand)} ${esc(d.identify.model)}</h3>
-      <p>Size: ${esc(d.identify.size) || '-'}</p>
-      <p>Type: ${esc(d.identify.shoeType) || '-'}</p>
-      <span class="tag">${esc(d.identify.shoeType) || 'Unknown'}</span>
-    </div>
-  `).join('');
-
-  const bar = selectedIds.size >= 2 ? `
-    <div class="compare-bar">
-      <span>${selectedIds.size} sepatu dipilih</span>
-      <button class="btn" onclick="go('compare', Array.from(selectedIds).join(','))">⚖️ Compare</button>
-      <button class="btn secondary" onclick="clearSelect()">Batal</button>
-    </div>` : (selectedIds.size === 1 ? `
-    <div class="compare-bar">
-      <span>Pilih minimal 1 sepatu lagi buat compare</span>
-      <button class="btn secondary" onclick="clearSelect()">Batal</button>
-    </div>` : '');
-
-  return `<div class="grid">${cards}</div>${bar}`;
-}
-
-function toggleSelect(id){
-  if(selectedIds.has(id)) selectedIds.delete(id);
-  else selectedIds.add(id);
-  route('list');
-}
-function clearSelect(){
-  selectedIds.clear();
-  route('list');
-}
-
-function abrasionBlock(prefix, label, val){
-  val = val || {};
-  return `
-  <div class="abrasion-block">
-    <label>${label}</label>
-    <div class="row2">
-      <select id="${prefix}_rating">${selectOptions(RATING_OPTIONS, val.rating)}</select>
-      <input type="text" id="${prefix}_note" placeholder="Keterangan" value="${escAttr(val.note)}">
-    </div>
-  </div>`;
-}
-
-function renderForm(id, item){
-  const editing = !!id;
-  const i = item ? item.identify : {};
-  const u = item ? item.upper : {};
-  const ab = item ? item.upper.abrasion : {};
-
-  return `
-  <form id="shoeForm" onsubmit="return saveForm(event,'${id||''}')">
-    <fieldset>
-      <legend>Identify</legend>
-      <div class="row2">
-        <div class="field"><label>Brand</label><input type="text" id="f_brand" value="${escAttr(i.brand)}" required></div>
-        <div class="field"><label>Model</label><input type="text" id="f_model" value="${escAttr(i.model)}" required></div>
-      </div>
-      <div class="row2">
-        <div class="field"><label>Size</label><input type="text" id="f_size" value="${escAttr(i.size)}"></div>
-        <div class="field"><label>Shoe Type</label><input type="text" id="f_shoeType" value="${escAttr(i.shoeType)}" placeholder="contoh: Running, Lifestyle, Football Boot"></div>
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend>Upper Material</legend>
-      <div class="row2">
-        <div class="field"><label>Toe box</label><input type="text" id="f_toebox" value="${escAttr(u.toebox)}"></div>
-        <div class="field"><label>Vamp</label><input type="text" id="f_vamp" value="${escAttr(u.vamp)}"></div>
-      </div>
-      <div class="row2">
-        <div class="field"><label>Quarter</label><input type="text" id="f_quarter" value="${escAttr(u.quarter)}"></div>
-        <div class="field"><label>Tongue</label><input type="text" id="f_tongue" value="${escAttr(u.tongue)}"></div>
-      </div>
-      <div class="row2">
-        <div class="field"><label>Lining</label><input type="text" id="f_lining" value="${escAttr(u.lining)}"></div>
-        <div class="field"><label>Reinforcement</label><input type="text" id="f_reinforcement" value="${escAttr(u.reinforcement)}"></div>
-      </div>
-      <div class="row2">
-        <div class="field"><label>Gusseted?</label>
-          <select id="f_gusseted">${selectOptions(GUSSET_OPTIONS, u.gusseted)}</select>
-        </div>
-        <div class="field"><label>Padding</label>
-          <select id="f_padding">${selectOptions(PADDING_OPTIONS, u.padding)}</select>
-        </div>
-      </div>
-      <div class="field"><label>Upper Thickness</label><input type="text" id="f_thickness" value="${escAttr(u.thickness)}" placeholder="contoh: 1.2mm"></div>
-
-      <label style="margin-top:8px;">Abrasion Test</label>
-      ${abrasionBlock('f_ab1', 'Upper Material 1', ab && ab.material1)}
-      ${abrasionBlock('f_ab2', 'Upper Material 2', ab && ab.material2)}
-      ${abrasionBlock('f_ab3', 'Upper Material 3', ab && ab.material3)}
-      ${abrasionBlock('f_ablining', 'Lining', ab && ab.lining)}
-    </fieldset>
-
-    <div class="actions">
-      <button type="button" class="btn secondary" onclick="go('list')">Batal</button>
-      <button type="submit" class="btn">${editing ? 'Simpan Perubahan' : 'Simpan Sepatu'}</button>
-    </div>
-  </form>`;
-}
-
-async function saveForm(e, id){
-  if(!isAdmin()){
-    alert('Akses ditolak.');
-    return false;
-  }
-
-  e.preventDefault();
-  const val = (sel) => document.getElementById(sel).value.trim();
-  const submitBtn = e.target.querySelector('button[type=submit]');
-  submitBtn.disabled = true;
-  submitBtn.textContent = 'Menyimpan...';
-
-  const existing = id ? (await getData()).find(d=>d.id===id) : null;
-
-  const newItem = {
-    id: id || uid(),
-    createdAt: existing ? existing.createdAt : Date.now(),
-    identify: {
-      brand: val('f_brand'),
-      model: val('f_model'),
-      size: val('f_size'),
-      shoeType: val('f_shoeType'),
-    },
-    upper: {
-      toebox: val('f_toebox'),
-      vamp: val('f_vamp'),
-      quarter: val('f_quarter'),
-      tongue: val('f_tongue'),
-      lining: val('f_lining'),
-      reinforcement: val('f_reinforcement'),
-      gusseted: val('f_gusseted'),
-      padding: val('f_padding'),
-      thickness: val('f_thickness'),
-      abrasion: {
-        material1: { rating: val('f_ab1_rating'), note: val('f_ab1_note') },
-        material2: { rating: val('f_ab2_rating'), note: val('f_ab2_note') },
-        material3: { rating: val('f_ab3_rating'), note: val('f_ab3_note') },
-        lining: { rating: val('f_ablining_rating'), note: val('f_ablining_note') },
+      app.innerHTML = '<div class="empty-state">⏳ Memuat data dari Google Sheets...</div>';
+      try {
+        const data = await getData();
+        if (view === 'list') app.innerHTML = renderList(data);
+        else if (view === 'form') app.innerHTML = renderForm(id, id ? data.find(d => d.id === id) : null);
+        else if (view === 'detail') app.innerHTML = renderDetail(data.find(d => d.id === id), id);
+        else if (view === 'compare') {
+          const ids = id.split(',');
+          const items = ids.map(i => data.find(d => d.id === i)).filter(Boolean);
+          app.innerHTML = renderCompare(items);
+        }
+        else if (view === 'settings') app.innerHTML = renderSettings();
+        
+        // Update compare bar
+        if (view === 'list') updateCompareBar();
+      } catch (err) {
+        app.innerHTML = `<div class="empty-state">
+          <h2>⚠️ Gagal terhubung ke Google Sheets</h2>
+          <p>${esc(err.message)}</p>
+          <button class="btn" onclick="go('settings')">⚙️ Atur Ulang URL</button>
+        </div>`;
       }
     }
-  };
 
-  try{
-    await apiPost({ action: id ? 'update' : 'create', item: newItem, role: getRole() });
-    cachedData = null;
-    go('detail', newItem.id);
-  } catch(err){
-    alert('Gagal simpan ke Google Sheets: ' + err.message);
-    submitBtn.disabled = false;
-    submitBtn.textContent = id ? 'Simpan Perubahan' : 'Simpan Sepatu';
-  }
-  return false;
-}
-
-function renderDetail(d){
-  if(!d) return `<div class="empty"><h2>Data nggak ketemu.</h2><button class="btn" onclick="go('list')">Balik ke List</button></div>`;
-
-  const i = d.identify, u = d.upper, ab = u.abrasion || {};
-  const admin = isAdmin();
-
-  const abRow = (label, obj) => obj ? `
-    <div class="k">${label}</div>
-    <div><span class="badge-rating badge-${obj.rating}">${obj.rating || '-'}</span> ${obj.note ? '— ' + esc(obj.note) : ''}</div>
-  ` : '';
-
-  return `
-  <div class="actions" style="justify-content:space-between; margin-bottom:16px;">
-    <button class="btn secondary" onclick="go('list')">← Balik</button>
-    <div class="actions">
-      ${admin ? `<button class="btn secondary" onclick="go('form','${d.id}')">✏️ Edit</button>` : ''}
-      ${admin ? `<button class="btn danger" onclick="deleteItem('${d.id}')">🗑️ Hapus</button>` : ''}
-    </div>
-  </div>
-
-  <div class="detail-section">
-    <h2>Identify</h2>
-    <div class="kv">
-      <div class="k">Brand</div><div>${esc(i.brand)}</div>
-      <div class="k">Model</div><div>${esc(i.model)}</div>
-      <div class="k">Size</div><div>${esc(i.size) || '-'}</div>
-      <div class="k">Shoe Type</div><div>${esc(i.shoeType) || '-'}</div>
-    </div>
-  </div>
-
-  <div class="detail-section">
-    <h2>Upper Material</h2>
-    <div class="kv">
-      <div class="k">Toe box</div><div>${esc(u.toebox) || '-'}</div>
-      <div class="k">Vamp</div><div>${esc(u.vamp) || '-'}</div>
-      <div class="k">Quarter</div><div>${esc(u.quarter) || '-'}</div>
-      <div class="k">Tongue</div><div>${esc(u.tongue) || '-'}</div>
-      <div class="k">Lining</div><div>${esc(u.lining) || '-'}</div>
-      <div class="k">Reinforcement</div><div>${esc(u.reinforcement) || '-'}</div>
-      <div class="k">Gusseted?</div><div>${esc(u.gusseted) || '-'}</div>
-      <div class="k">Padding</div><div>${esc(u.padding) || '-'}</div>
-      <div class="k">Upper Thickness</div><div>${esc(u.thickness) || '-'}</div>
-      ${abRow('Abrasion — Upper Material 1', ab.material1)}
-      ${abRow('Abrasion — Upper Material 2', ab.material2)}
-      ${abRow('Abrasion — Upper Material 3', ab.material3)}
-      ${abRow('Abrasion — Lining', ab.lining)}
-    </div>
-  </div>
-  `;
-}
-
-function renderCompare(items){
-  if(items.length < 2){
-    return `<div class="empty"><h2>Pilih minimal 2 sepatu buat compare.</h2><button class="btn" onclick="go('list')">Balik ke List</button></div>`;
-  }
-
-  const abCell = (obj) => {
-    if(!obj || !obj.rating) return '-';
-    return `<span class="badge-rating badge-${obj.rating}">${obj.rating}</span>${obj.note ? ' — ' + esc(obj.note) : ''}`;
-  };
-
-  const headerCols = items.map(d => `<th>${esc(d.identify.brand)}<br>${esc(d.identify.model)}</th>`).join('');
-  const rows = [
-    { section: 'Identify' },
-    { label: 'Brand', get: d => esc(d.identify.brand) },
-    { label: 'Model', get: d => esc(d.identify.model) },
-    { label: 'Size', get: d => esc(d.identify.size) || '-' },
-    { label: 'Shoe Type', get: d => esc(d.identify.shoeType) || '-' },
-    { section: 'Upper Material' },
-    { label: 'Toe box', get: d => esc(d.upper.toebox) || '-' },
-    { label: 'Vamp', get: d => esc(d.upper.vamp) || '-' },
-    { label: 'Quarter', get: d => esc(d.upper.quarter) || '-' },
-    { label: 'Tongue', get: d => esc(d.upper.tongue) || '-' },
-    { label: 'Lining', get: d => esc(d.upper.lining) || '-' },
-    { label: 'Reinforcement', get: d => esc(d.upper.reinforcement) || '-' },
-    { label: 'Gusseted?', get: d => esc(d.upper.gusseted) || '-' },
-    { label: 'Padding', get: d => esc(d.upper.padding) || '-' },
-    { label: 'Upper Thickness', get: d => esc(d.upper.thickness) || '-' },
-    { section: 'Abrasion Test' },
-    { label: 'Upper Material 1', get: d => abCell(d.upper.abrasion && d.upper.abrasion.material1) },
-    { label: 'Upper Material 2', get: d => abCell(d.upper.abrasion && d.upper.abrasion.material2) },
-    { label: 'Upper Material 3', get: d => abCell(d.upper.abrasion && d.upper.abrasion.material3) },
-    { label: 'Lining', get: d => abCell(d.upper.abrasion && d.upper.abrasion.lining) },
-  ];
-
-  const bodyRows = rows.map(r => {
-    if(r.section){
-      return `<tr class="section-row"><td class="label-col">${r.section}</td>${items.map(()=>'<td></td>').join('')}</tr>`;
+    function renderSettingsPrompt() {
+      return `<div class="empty-state">
+        <h2>👋 Setup Awal</h2>
+        <p>Masukkan URL Google Apps Script agar bisa terhubung ke data.</p>
+        <button class="btn" onclick="go('settings')">⚙️ Masuk Settings</button>
+      </div>`;
     }
-    return `<tr><td class="label-col">${r.label}</td>${items.map(d => `<td>${r.get(d)}</td>`).join('')}</tr>`;
-  }).join('');
 
-  return `
-  <div class="actions" style="justify-content:space-between; margin-bottom:16px;">
-    <button class="btn secondary" onclick="go('list')">← Balik</button>
-    <h2 style="margin:0; font-size:16px;">⚖️ Compare ${items.length} Sepatu</h2>
-  </div>
-  <div class="table-scroll">
-    <table class="compare-table">
-      <thead><tr><th class="label-col">Field</th>${headerCols}</tr></thead>
-      <tbody>${bodyRows}</tbody>
-    </table>
-  </div>`;
-}
+    function renderSettings() {
+      const url = getScriptUrl();
+      return `
+        <fieldset style="max-width:640px; margin:0 auto;">
+          <legend>⚙️ Konfigurasi Script</legend>
+          <div class="field">
+            <label>Google Apps Script Web App URL</label>
+            <input type="text" id="settingsUrl" value="${escAttr(url)}" placeholder="https://script.google.com/macros/s/...">
+          </div>
+          <p style="color:var(--muted); font-size:0.8rem;">Deploy Apps Script sebagai Web App, lalu salin URL-nya.</p>
+          <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
+            <button class="btn secondary" onclick="go('list')">Batal</button>
+            <button class="btn" onclick="saveSettings()">Simpan & Uji Koneksi</button>
+          </div>
+        </fieldset>
+      `;
+    }
 
-async function deleteItem(id){
-  if(!isAdmin()){
-    alert('Akses ditolak.');
-    return;
-  }
-  if(!confirm('Yakin hapus data sepatu ini?')) return;
-  try{
-    await apiPost({ action: 'delete', id: id, role: getRole() });
-    cachedData = null;
-    go('list');
-  } catch(err){
-    alert('Gagal hapus: ' + err.message);
-  }
-}
-
-async function exportData(){
-  try{
-    const data = await getData(true);
-    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'shoepolice-teardown-' + Date.now() + '.json';
-    a.click();
-    URL.revokeObjectURL(url);
-  } catch(err){
-    alert('Gagal export: ' + err.message);
-  }
-}
-
-async function importData(e){
-  if(!isAdmin()){
-    alert('Akses ditolak.');
-    e.target.value = '';
-    return;
-  }
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = async function(ev){
-    try{
-      const imported = JSON.parse(ev.target.result);
-      if(!Array.isArray(imported)) throw new Error('Format salah');
-      if(!confirm(`Import ${imported.length} data ke Google Sheets?`)) return;
-      for(const item of imported){
-        await apiPost({ action: 'create', item: item, role: getRole() });
-      }
+    window.saveSettings = function() {
+      const url = document.getElementById('settingsUrl').value.trim();
+      if (!url) { alert('URL tidak boleh kosong.'); return; }
+      setScriptUrl(url);
       cachedData = null;
-      alert('Import berhasil! ' + imported.length + ' data diproses.');
       go('list');
-    } catch(err){
-      alert('Gagal import: ' + err.message);
+    };
+
+    // ---------- LIST & SELECTION ----------
+    function renderList(data) {
+      if (data.length === 0) {
+        return `<div class="empty-state"><h2>Belum ada sepatu</h2><p>${isAdmin() ? 'Klik "Tambah Sepatu" untuk mulai.' : 'Database masih kosong.'}</p></div>`;
+      }
+      const cards = data.map(d => {
+        const checked = selectedIds.has(d.id) ? 'checked' : '';
+        return `
+          <div class="card" onclick="go('detail','${d.id}')">
+            ${isAdmin() ? `<input type="checkbox" class="ck" data-id="${d.id}" ${checked} onclick="event.stopPropagation(); toggleSelect('${d.id}')" style="position:absolute; top:12px; right:12px; transform:scale(1.2);">` : ''}
+            <h3>${esc(d.identify.brand)} ${esc(d.identify.model)}</h3>
+            <p>Size: ${esc(d.identify.size) || '-'}</p>
+            <p>Type: ${esc(d.identify.shoeType) || '-'}</p>
+            <span class="tag">${esc(d.identify.shoeType) || 'Unknown'}</span>
+          </div>
+        `;
+      }).join('');
+      return `<div class="grid">${cards}</div>`;
     }
-  };
-  reader.readAsText(file);
-  e.target.value = '';
-}
 
-async function deleteItem(id){
-  if(!isAdmin()) return alert('Akses ditolak.');
-  if(!confirm('Yakin hapus data sepatu ini?')) return;
-  try{
-    await apiPost({ action: 'delete', id: id, role: getRole() });
-    cachedData = null;
-    go('list');
-  } catch(err){
-    alert('Gagal hapus: ' + err.message);
-  }
-}
+    window.toggleSelect = function(id) {
+      if (!isAdmin()) return;
+      if (selectedIds.has(id)) selectedIds.delete(id);
+      else selectedIds.add(id);
+      route('list');
+    };
 
-document.getElementById('loginModal').addEventListener('submit', submitAdminLogin);
+    window.clearSelect = function() {
+      selectedIds.clear();
+      route('list');
+    };
+
+    function updateCompareBar() {
+      const container = document.getElementById('compareBarContainer');
+      if (!isAdmin() || selectedIds.size === 0) {
+        container.innerHTML = '';
+        return;
+      }
+      const ids = Array.from(selectedIds).join(',');
+      container.innerHTML = `
+        <div class="compare-bar">
+          <span>${selectedIds.size} sepatu dipilih</span>
+          ${selectedIds.size >= 2 ? `<button class="btn" onclick="go('compare','${ids}')">⚖️ Compare</button>` : '<span style="color:var(--muted);">Pilih minimal 2</span>'}
+          <button class="btn secondary" onclick="clearSelect()">Batal Pilih</button>
+        </div>
+      `;
+    }
+
+    // ---------- FORM (hanya admin) ----------
+    function abrasionBlock(prefix, label, val = {}) {
+      return `
+        <div class="abrasion-block">
+          <label>${label}</label>
+          <div class="row2">
+            <select id="${prefix}_rating">${selectOptions(RATING_OPTIONS, val.rating)}</select>
+            <input type="text" id="${prefix}_note" placeholder="Keterangan" value="${escAttr(val.note || '')}">
+          </div>
+        </div>
+      `;
+    }
+
+    function renderForm(id, item) {
+      if (!isAdmin()) {
+        return `<div class="empty-state"><h2>🔒 Akses Terbatas</h2><p>Hanya admin yang bisa menambah/mengedit data.</p><button class="btn" onclick="go('list')">Kembali</button></div>`;
+      }
+      const editing = !!id;
+      const i = item?.identify || {};
+      const u = item?.upper || {};
+      const ab = u.abrasion || {};
+
+      return `
+        <form id="shoeForm" onsubmit="return saveForm(event,'${id||''}')">
+          <fieldset>
+            <legend>📌 Identify</legend>
+            <div class="row2">
+              <div class="field"><label>Brand</label><input type="text" id="f_brand" value="${escAttr(i.brand)}" required></div>
+              <div class="field"><label>Model</label><input type="text" id="f_model" value="${escAttr(i.model)}" required></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Size</label><input type="text" id="f_size" value="${escAttr(i.size)}"></div>
+              <div class="field"><label>Shoe Type</label><input type="text" id="f_shoeType" value="${escAttr(i.shoeType)}" placeholder="Running, Lifestyle..."></div>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>🧵 Upper Material</legend>
+            <div class="row2">
+              <div class="field"><label>Toe box</label><input type="text" id="f_toebox" value="${escAttr(u.toebox)}"></div>
+              <div class="field"><label>Vamp</label><input type="text" id="f_vamp" value="${escAttr(u.vamp)}"></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Quarter</label><input type="text" id="f_quarter" value="${escAttr(u.quarter)}"></div>
+              <div class="field"><label>Tongue</label><input type="text" id="f_tongue" value="${escAttr(u.tongue)}"></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Lining</label><input type="text" id="f_lining" value="${escAttr(u.lining)}"></div>
+              <div class="field"><label>Reinforcement</label><input type="text" id="f_reinforcement" value="${escAttr(u.reinforcement)}"></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Gusseted</label><select id="f_gusseted">${selectOptions(GUSSET_OPTIONS, u.gusseted)}</select></div>
+              <div class="field"><label>Padding</label><select id="f_padding">${selectOptions(PADDING_OPTIONS, u.padding)}</select></div>
+            </div>
+            <div class="field"><label>Thickness</label><input type="text" id="f_thickness" value="${escAttr(u.thickness)}"></div>
+            <label style="margin-top:10px;">Abrasion Test</label>
+            ${abrasionBlock('f_ab1', 'Material 1', ab.material1)}
+            ${abrasionBlock('f_ab2', 'Material 2', ab.material2)}
+            ${abrasionBlock('f_ab3', 'Material 3', ab.material3)}
+            ${abrasionBlock('f_ablining', 'Lining', ab.lining)}
+          </fieldset>
+          <div style="display:flex; gap:12px; justify-content:flex-end;">
+            <button type="button" class="btn secondary" onclick="go('list')">Batal</button>
+            <button type="submit" class="btn">${editing ? 'Update' : 'Simpan'}</button>
+          </div>
+        </form>
+      `;
+    }
+
+    window.saveForm = async function(e, id) {
+      e.preventDefault();
+      if (!isAdmin()) return false;
+      const val = (sel) => document.getElementById(sel)?.value.trim() || '';
+      const submitBtn = e.target.querySelector('button[type=submit]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Menyimpan...';
+
+      const existing = id ? (await getData()).find(d => d.id === id) : null;
+      const newItem = {
+        id: id || uid(),
+        createdAt: existing ? existing.createdAt : Date.now(),
+        identify: {
+          brand: val('f_brand'), model: val('f_model'), size: val('f_size'), shoeType: val('f_shoeType')
+        },
+        upper: {
+          toebox: val('f_toebox'), vamp: val('f_vamp'), quarter: val('f_quarter'),
+          tongue: val('f_tongue'), lining: val('f_lining'), reinforcement: val('f_reinforcement'),
+          gusseted: val('f_gusseted'), padding: val('f_padding'), thickness: val('f_thickness'),
+          abrasion: {
+            material1: { rating: val('f_ab1_rating'), note: val('f_ab1_note') },
+            material2: { rating: val('f_ab2_rating'), note: val('f_ab2_note') },
+            material3: { rating: val('f_ab3_rating'), note: val('f_ab3_note') },
+            lining: { rating: val('f_ablining_rating'), note: val('f_ablining_note') }
+          }
+        }
+      };
+
+      try {
+        await apiPost({ action: id ? 'update' : 'create', item: newItem });
+        cachedData = null;
+        go('detail', newItem.id);
+      } catch (err) {
+        alert('Gagal: ' + err.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = id ? 'Update' : 'Simpan';
+      }
+      return false;
+    };
+
+    // ---------- DETAIL (viewer aman) ----------
+    function renderDetail(d, id) {
+      if (!d) return `<div class="empty-state"><h2>Data tidak ditemukan</h2><button class="btn" onclick="go('list')">Kembali</button></div>`;
+      const i = d.identify, u = d.upper, ab = u.abrasion || {};
+      const abRow = (label, obj) => obj ? `<div class="k">${label}</div><div><span class="badge-rating badge-${obj.rating}">${obj.rating || '-'}</span> ${obj.note ? '— '+esc(obj.note) : ''}</div>` : '';
+      const adminButtons = isAdmin() ? `
+        <button class="btn secondary" onclick="go('form','${d.id}')">✏️ Edit</button>
+        <button class="btn danger" onclick="deleteItem('${d.id}')">🗑️ Hapus</button>
+      ` : '';
+
+      return `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <button class="btn secondary" onclick="go('list')">← Kembali</button>
+          <div style="display:flex; gap:8px;">${adminButtons}</div>
+        </div>
+        <div class="detail-section"><h2>Identify</h2><div class="kv">
+          <div class="k">Brand</div><div>${esc(i.brand)}</div>
+          <div class="k">Model</div><div>${esc(i.model)}</div>
+          <div class="k">Size</div><div>${esc(i.size)||'-'}</div>
+          <div class="k">Type</div><div>${esc(i.shoeType)||'-'}</div>
+        </div></div>
+        <div class="detail-section"><h2>Upper</h2><div class="kv">
+          <div class="k">Toe box</div><div>${esc(u.toebox)||'-'}</div>
+          <div class="k">Vamp</div><div>${esc(u.vamp)||'-'}</div>
+          <div class="k">Quarter</div><div>${esc(u.quarter)||'-'}</div>
+          <div class="k">Tongue</div><div>${esc(u.tongue)||'-'}</div>
+          <div class="k">Lining</div><div>${esc(u.lining)||'-'}</div>
+          <div class="k">Reinforcement</div><div>${esc(u.reinforcement)||'-'}</div>
+          <div class="k">Gusseted</div><div>${esc(u.gusseted)||'-'}</div>
+          <div class="k">Padding</div><div>${esc(u.padding)||'-'}</div>
+          <div class="k">Thickness</div><div>${esc(u.thickness)||'-'}</div>
+          ${abRow('Abrasion Mat1', ab.material1)} ${abRow('Abrasion Mat2', ab.material2)}
+          ${abRow('Abrasion Mat3', ab.material3)} ${abRow('Abrasion Lining', ab.lining)}
+        </div></div>
+      `;
+    }
+
+    window.deleteItem = async function(id) {
+      if (!isAdmin()) return;
+      if (!confirm('Yakin hapus sepatu ini?')) return;
+      await apiPost({ action: 'delete', id });
+      cachedData = null;
+      go('list');
+    };
+
+    // ---------- COMPARE ----------
+    function renderCompare(items) {
+      if (items.length < 2) return `<div class="empty-state"><h2>Pilih minimal 2</h2></div>`;
+      const headerCols = items.map(d => `<th>${esc(d.identify.brand)}<br>${esc(d.identify.model)}</th>`).join('');
+      const abCell = (obj) => obj?.rating ? `<span class="badge-rating badge-${obj.rating}">${obj.rating}</span> ${obj.note||''}` : '-';
+      const rows = [
+        { section:'Identify' }, { label:'Brand', get:d=>esc(d.identify.brand) }, { label:'Model', get:d=>esc(d.identify.model) },
+        { label:'Size', get:d=>esc(d.identify.size)||'-' }, { label:'Type', get:d=>esc(d.identify.shoeType)||'-' },
+        { section:'Upper' }, { label:'Toe box', get:d=>esc(d.upper.toebox)||'-' }, { label:'Vamp', get:d=>esc(d.upper.vamp)||'-' },
+        { label:'Quarter', get:d=>esc(d.upper.quarter)||'-' }, { label:'Tongue', get:d=>esc(d.upper.tongue)||'-' },
+        { label:'Lining', get:d=>esc(d.upper.lining)||'-' }, { label:'Gusseted', get:d=>esc(d.upper.gusseted)||'-' },
+        { label:'Padding', get:d=>esc(d.upper.padding)||'-' }, { label:'Thickness', get:d=>esc(d.upper.thickness)||'-' },
+        { section:'Abrasion' }, { label:'Mat1', get:d=>abCell(d.upper.abrasion?.material1) },
+        { label:'Mat2', get:d=>abCell(d.upper.abrasion?.material2) }, { label:'Mat3', get:d=>abCell(d.upper.abrasion?.material3) },
+        { label:'Lining', get:d=>abCell(d.upper.abrasion?.lining) }
+      ];
+      const bodyRows = rows.map(r => r.section ? `<tr class="section-row"><td class="label-col">${r.section}</td>${items.map(()=>'<td></td>').join('')}</tr>` : `<tr><td class="label-col">${r.label}</td>${items.map(d=>`<td>${r.get(d)}</td>`).join('')}</tr>`).join('');
+      return `<div class="table-scroll"><table class="compare-table"><thead><tr><th class="label-col">Field</th>${headerCols}</tr></thead><tbody>${bodyRows}</tbody></table></div>`;
+    }
+
+    // ---------- IMPORT/EXPORT (admin only) ----------
+    window.exportData = async function() {
+      const data = await getData(true);
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = 'shoepolice-export.json'; a.click();
+    };
+    window.importData = function(e) {
+      if (!isAdmin()) { alert('Hanya admin bisa import.'); return; }
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        try {
+          const items = JSON.parse(ev.target.result);
+          if (!Array.isArray(items)) throw new Error('Format salah');
+          for (const item of items) await apiPost({ action: 'create', item });
+          cachedData = null; go('list');
+        } catch (err) { alert('Gagal import: '+err.message); }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    };
+
+    // ---------- ROUTING ----------
+    window.go = function(view, id) {
+      if (view === 'detail') location.hash = 'detail/' + id;
+      else if (view === 'form' && id) location.hash = 'edit/' + id;
+      else if (view === 'form') location.hash = 'form';
+      else if (view === 'compare') location.hash = 'compare/' + encodeURIComponent(id);
+      else if (view === 'settings') location.hash = 'settings';
+      else location.hash = '';
+    };
+
+    window.addEventListener('hashchange', () => {
+      const hash = location.hash.slice(1);
+      if (hash.startsWith('detail/')) route('detail', hash.split('/')[1]);
+      else if (hash.startsWith('edit/')) route('form', hash.split('/')[1]);
+      else if (hash.startsWith('compare/')) route('compare', decodeURIComponent(hash.split('/')[1]));
+      else if (hash === 'form') route('form');
+      else if (hash === 'settings') route('settings');
+      else route('list');
+    });
+
+    // Init
+    updateUIForMode();
+  })();
 </script>
 </body>
 </html>
